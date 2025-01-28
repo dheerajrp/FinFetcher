@@ -5,7 +5,6 @@ from django import forms
 from django.conf import settings
 import pandas as pd
 import os
-import math
 
 from typing import List, Dict, Any
 
