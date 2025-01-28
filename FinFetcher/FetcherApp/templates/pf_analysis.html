@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .form-container {
+            margin-bottom: 20px;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+        }
+        .visualization {
+            margin-bottom: 30px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Portfolio Analysis</h1>
+
+        <div class="form-container">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit">Upload File</button>
+            </form>
+        </div>
+
+        {% if error %}
+            <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        {% if visualizations %}
+            <div class="visualization">
+                <h2>Investment Distribution by Category</h2>
+                <img src="data:image/png;base64,{{ visualizations.category_distribution }}" alt="Category Distribution">
+            </div>
+
+            <div class="visualization">
+                <h2>Investment vs Current Value</h2>
+                <img src="data:image/png;base64,{{ visualizations.investment_vs_current }}" alt="Investment vs Current Value">
+            </div>
+
+            <div class="visualization">
+                <h2>XIRR Distribution</h2>
+                <img src="data:image/png;base64,{{ visualizations.xirr_distribution }}" alt="XIRR Distribution">
+            </div>
+
+            <div class="visualization">
+                <h2>Returns vs XIRR Correlation</h2>
+                <img src="data:image/png;base64,{{ visualizations.returns_vs_xirr }}" alt="Returns vs XIRR Correlation">
+            </div>
+
+            <div class="summary">
+                <h2>Summary</h2>
+                <p><strong>Total Investments:</strong> ₹{{ summary.total_investments }}</p>
+                <p><strong>Current Value:</strong> ₹{{ summary.current_value }}</p>
+                <p><strong>Total Profit/Loss:</strong> ₹{{ summary.total_profit_loss }}</p>
+                <p><strong>Profit/Loss Percentage:</strong> {{ summary.profit_loss_percent }}%</p>
+                <p><strong>Average XIRR:</strong> {{ summary.avg_xirr }}%</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
