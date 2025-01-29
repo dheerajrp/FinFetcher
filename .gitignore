@@ -4,3 +4,4 @@ FinFetch/FinFetcher/db.sqlite3
 FinFetcher/FetcherApp/__pycache__
 FinFetcher/FinFetcher/__pycache__
 FinFetcher/FetcherApp/migrations/__pycache__
+.env

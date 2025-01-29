@@ -3,10 +3,14 @@ from django.http import JsonResponse, HttpResponse
 from django.views import View
 from django import forms
 from django.conf import settings
+from django.db import connection
 import pandas as pd
 import os
-
 from typing import List, Dict, Any
+from datetime import datetime
+import pytz
+
+india_tz = pytz.timezone('Asia/Kolkata')
 
 
 def hello_world(request):
@@ -15,8 +19,9 @@ def hello_world(request):
 # Form for file upload
 class FileUploadForm(forms.Form):
     file = forms.FileField()
+    save_to_db = forms.BooleanField(required=False, label="Save to Database")
 
-# Function to save uploaded file
+# Save uploaded file
 def save_uploaded_file(request) -> str:
     uploaded_file = request.FILES['file']
     file_path = os.path.join(settings.MEDIA_ROOT, uploaded_file.name)
@@ -25,13 +30,13 @@ def save_uploaded_file(request) -> str:
             destination.write(chunk)
     return file_path
 
-# Function to change the datatypes
+# Change column datatypes
 def change_type(df: pd.DataFrame, columns: List) -> pd.DataFrame:
     for column in columns:
         df[column] = df[column].astype('float')
     return df
 
-# Function to process the uploaded Excel file
+# Process the uploaded Excel file
 def process_excel_file(file_path: str) -> Dict[Any, Any]:
     data = pd.ExcelFile(file_path)
     sheet_data = data.parse(data.sheet_names[0])
@@ -76,10 +81,42 @@ def process_excel_file(file_path: str) -> Dict[Any, Any]:
         "holdings": holdings_data.to_dict(orient="records")
     }
 
-# Function to delete the uploaded file
+# Delete the uploaded file
 def delete_uploaded_file(file_path: str) -> None:
     if os.path.exists(file_path):
         os.remove(file_path)
+
+# Save data to MySQL with a flag to control saving
+def save_to_database(data: Dict[Any, Any], save_flag: bool):
+    if not save_flag:
+        return
+
+    name = data['personal_details']['name']
+    pan = data['personal_details']['pan']
+    total_investments = data['summary']['total_investments']
+    current_value = data['summary']['current_value']
+
+    for holding in data['holdings']:
+        scheme_name = holding['Scheme Name']
+        units = holding['Units']
+        invested = holding['Invested Value']
+        current = holding['Current Value']
+        returns = holding['Returns']
+
+        print('***', scheme_name, units, invested, current, returns, '\n')
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO portfolio_holdings (scheme_name, units, invested, current, returns)
+                VALUES (%s, %s, %s, %s, %s)
+            """, [scheme_name, units, invested, current, returns])
+
+
+    # Insert into the database
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            INSERT INTO portfolio_summary (name, pan, total_investments, current_value, created_at)
+            VALUES (%s, %s, %s, %s, %s)
+        """, [name, pan, total_investments, current_value, datetime.now(india_tz)])
 
 # View for handling file upload and analysis
 class PortfolioAnalysisView(View):
@@ -99,6 +136,10 @@ class PortfolioAnalysisView(View):
             try:
                 # Process the Excel file
                 result = process_excel_file(file_path)
+
+                # Flag to control database saving
+                save_flag = form.cleaned_data.get("save_to_db", False)
+                save_to_database(result, save_flag)
             except Exception as e:
                 return JsonResponse({"error": str(e)}, status=400)
             finally:
